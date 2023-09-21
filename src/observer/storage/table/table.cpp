@@ -139,7 +139,7 @@ RC Table::drop(const char *path, const char *base_dir, const char *name)
   for (int i = 0; i < index_num; i++) {
     const IndexMeta *index_meta = table_meta_.index(i);
     std::string index_file = table_index_file(base_dir, name, index_meta->name());
-    ret = unlink(index_file.c_str());
+    int ret = unlink(index_file.c_str());
     if (ret != 0) {
       LOG_ERROR("Failed to unlink index file. file name=%s, errmsg=%d:%s", index_file.c_str(), errno, strerror(errno));
       return RC::FILE_REMOVE_EOF;
