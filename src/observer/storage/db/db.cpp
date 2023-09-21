@@ -86,6 +86,7 @@ RC Db::create_table(const char *table_name, int attribute_count, const AttrInfoS
   }
 
   // 文件路径可以移到Table模块
+  //获得这个表的路径
   std::string table_file_path = table_meta_file(path_.c_str(), table_name);
   Table *table = new Table();
   rc = table->create(next_table_id_++, table_file_path.c_str(), table_name, path_.c_str(), attribute_count, attributes);
@@ -94,12 +95,26 @@ RC Db::create_table(const char *table_name, int attribute_count, const AttrInfoS
     delete table;
     return rc;
   }
-
+  //创建完表了，把表放到map里
   opened_tables_[table_name] = table;
   LOG_INFO("Create table success. table name=%s", table_name);
   return RC::SUCCESS;
 }
+RC Db::drop_table(const char *table_name)
+{
+  std::string table_file_path = table_meta_file(path_.c_str(), table_name);
+  Table *table = new Table();
+  RC rc = table->drop(table_file_path.c_str(), path_.c_str(), table_name);
+  if (rc != RC::SUCCESS) {
+    LOG_ERROR("Failed to drop table. table=%s", table_name);
+    return rc;
+  }
 
+  opened_tables_.erase(table_name);
+  delete table;
+  LOG_INFO("Drop table success. table name=%s", table_name);
+  return RC::SUCCESS;
+}
 Table *Db::find_table(const char *table_name) const
 {
   std::unordered_map<std::string, Table *>::const_iterator iter = opened_tables_.find(table_name);
@@ -119,7 +134,7 @@ Table *Db::find_table(int32_t table_id) const
   return nullptr;
 }
 
-RC Db::open_all_tables()
+RC Db::open_all_tables()//打开所有的表，在数据库初始化的时候调用
 {
   std::vector<std::string> table_meta_files;
   int ret = common::list_file(path_.c_str(), TABLE_META_FILE_PATTERN, table_meta_files);

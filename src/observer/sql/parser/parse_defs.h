@@ -204,7 +204,6 @@ struct DescTableSqlNode
 {
   std::string relation_name;
 };
-
 /**
  * @brief 描述一个load data语句
  * @ingroup SQLParser

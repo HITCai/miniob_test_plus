@@ -297,7 +297,7 @@ RC RecordFileHandler::init(DiskBufferPool *buffer_pool)
   }
 
   disk_buffer_pool_ = buffer_pool;
-
+  //找到没有满的页面
   RC rc = init_free_pages();
 
   LOG_INFO("open record file handle done. rc=%s", strrc(rc));

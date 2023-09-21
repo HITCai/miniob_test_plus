@@ -85,7 +85,7 @@ void SessionStage::handle_event(StageEvent *event)
   return;
 }
 
-void SessionStage::handle_request(StageEvent *event)
+void SessionStage::handle_request(StageEvent *event)//处理请求
 {
   SessionEvent *sev = dynamic_cast<SessionEvent *>(event);
   if (nullptr == sev) {
@@ -93,7 +93,7 @@ void SessionStage::handle_request(StageEvent *event)
     return;
   }
 
-  std::string sql = sev->query();
+  std::string sql = sev->query();//获取sql语句
   if (common::is_blank(sql.c_str())) {
     return;
   }

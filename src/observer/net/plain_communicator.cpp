@@ -155,7 +155,7 @@ RC PlainCommunicator::write_debug(SessionEvent *request, bool &need_disconnect)
   return RC::SUCCESS;
 }
 
-RC PlainCommunicator::write_result(SessionEvent *event, bool &need_disconnect)
+RC PlainCommunicator::write_result(SessionEvent *event, bool &need_disconnect)//发送结果
 {
   RC rc = write_result_internal(event, need_disconnect);
   if (!need_disconnect) {

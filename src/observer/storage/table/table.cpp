@@ -57,13 +57,13 @@ RC Table::create(int32_t table_id,
                  int attribute_count, 
                  const AttrInfoSqlNode attributes[])
 {
-
-  if (common::is_blank(name)) {
+  //检查table名是否为空
+    if (common::is_blank(name)) {
     LOG_WARN("Name cannot be empty");
     return RC::INVALID_ARGUMENT;
   }
   LOG_INFO("Begin to create table %s:%s", base_dir, name);
-
+  //检查属性数量是否合法
   if (attribute_count <= 0 || nullptr == attributes) {
     LOG_WARN("Invalid arguments. table_name=%s, attribute_count=%d, attributes=%p", name, attribute_count, attributes);
     return RC::INVALID_ARGUMENT;
@@ -73,6 +73,7 @@ RC Table::create(int32_t table_id,
 
   // 使用 table_name.table记录一个表的元数据
   // 判断表文件是否已经存在
+  //open后.table文件已经创建出来了
   int fd = ::open(path, O_WRONLY | O_CREAT | O_EXCL | O_CLOEXEC, 0600);
   if (fd < 0) {
     if (EEXIST == errno) {
@@ -86,11 +87,12 @@ RC Table::create(int32_t table_id,
   close(fd);
 
   // 创建文件
+  // 1. 对元数据文件写入元数据
   if ((rc = table_meta_.init(table_id, name, attribute_count, attributes)) != RC::SUCCESS) {
     LOG_ERROR("Failed to init table meta. name:%s, ret:%d", name, rc);
     return rc;  // delete table file
   }
-
+  //table已经初始化完成，接下来要将元数据写入文件中
   std::fstream fs;
   fs.open(path, std::ios_base::out | std::ios_base::binary);
   if (!fs.is_open()) {
@@ -100,16 +102,18 @@ RC Table::create(int32_t table_id,
 
   // 记录元数据到文件中
   table_meta_.serialize(fs);
+  //关闭文件
   fs.close();
-
+  //获取data文件的路径
   std::string data_file = table_data_file(base_dir, name);
-  BufferPoolManager &bpm = BufferPoolManager::instance();
-  rc = bpm.create_file(data_file.c_str());
+  //相当于实例化了一个manager
+  BufferPoolManager &bpm = BufferPoolManager::instance();//把bufferpoolmanager的实例化给bpm
+  rc = bpm.create_file(data_file.c_str());//创建文件，这个文件初始化了一个页，如果深入到create_file函数中可以发现，里面只创建了一个page，即头部页，然后把这个页存到了文件xxx.data中
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to create disk buffer pool of data file. file name=%s", data_file.c_str());
     return rc;
   }
-
+  //初始化recordhandler，recordhandler管理整个文件中记录的增删改查
   rc = init_record_handler(base_dir);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to create table %s due to init record handler failed.", data_file.c_str());
@@ -121,8 +125,48 @@ RC Table::create(int32_t table_id,
   LOG_INFO("Successfully create table %s:%s", base_dir, name);
   return rc;
 }
+RC Table::drop(const char *path, const char *base_dir, const char *name)
+{
+  if (common::is_blank(name)) {
+    LOG_WARN("Name cannot be empty");
+    return RC::INVALID_ARGUMENT;
+  }
+  LOG_INFO("Begin to drop table %s", name);
+  RC rc = RC::SUCCESS;
 
-RC Table::open(const char *meta_file, const char *base_dir)
+// 删除索引文件
+  const int index_num = table_meta_.index_num();
+  for (int i = 0; i < index_num; i++) {
+    const IndexMeta *index_meta = table_meta_.index(i);
+    std::string index_file = table_index_file(base_dir, name, index_meta->name());
+    ret = unlink(index_file.c_str());
+    if (ret != 0) {
+      LOG_ERROR("Failed to unlink index file. file name=%s, errmsg=%d:%s", index_file.c_str(), errno, strerror(errno));
+      return RC::FILE_REMOVE_EOF;
+    }
+  }
+
+  // // 删除表文件
+  std::string meta_file = table_meta_file(base_dir, name);
+  int ret = unlink(meta_file.c_str());
+  if (ret != 0) {
+    LOG_ERROR("Failed to unlink table meta file. file name=%s, errmsg=%d:%s", meta_file.c_str(), errno, strerror(errno));
+    return RC::FILE_REMOVE_EOF;
+  }
+
+  // // 删除数据文件
+  std::string data_file = table_data_file(base_dir, name);
+  ret = unlink(data_file.c_str());
+  if (ret != 0) {
+    LOG_ERROR("Failed to unlink table data file. file name=%s, errmsg=%d:%s", data_file.c_str(), errno, strerror(errno));
+    return RC::FILE_REMOVE_EOF;
+  }
+
+  
+  LOG_INFO("Successfully drop table %s", name);
+  return RC::SUCCESS;
+}
+RC Table::open(const char *meta_file, const char *base_dir)//这个函数是打开一个已经存在的表
 {
   // 加载元数据文件
   std::fstream fs;
@@ -307,13 +351,13 @@ RC Table::make_record(int value_num, const Value *values, Record &record)
 RC Table::init_record_handler(const char *base_dir)
 {
   std::string data_file = table_data_file(base_dir, table_meta_.name());
-
+  //通过manager来打开文件
   RC rc = BufferPoolManager::instance().open_file(data_file.c_str(), data_buffer_pool_);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("Failed to open disk buffer pool for file:%s. rc=%d:%s", data_file.c_str(), rc, strrc(rc));
     return rc;
   }
-
+  //创建一个recordhandler，管理整个文件中记录的增删改查
   record_handler_ = new RecordFileHandler();
   rc = record_handler_->init(data_buffer_pool_);
   if (rc != RC::SUCCESS) {

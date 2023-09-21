@@ -69,7 +69,7 @@ RC TableMeta::init(int32_t table_id, const char *name, int field_num, const Attr
   } else {
     fields_.resize(field_num);
   }
-
+  //这里是对列的信息进行写入
   for (int i = 0; i < field_num; i++) {
     const AttrInfoSqlNode &attr_info = attributes[i];
     rc = fields_[i + trx_field_num].init(attr_info.name.c_str(), 
@@ -78,7 +78,7 @@ RC TableMeta::init(int32_t table_id, const char *name, int field_num, const Attr
       LOG_ERROR("Failed to init field meta. table name=%s, field name: %s", name, attr_info.name.c_str());
       return rc;
     }
-
+    //这个一直在累加字段长度，看上去是字段总长度？
     field_offset += attr_info.length;
   }
 

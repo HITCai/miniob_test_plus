@@ -30,10 +30,11 @@ RC CreateTableExecutor::execute(SQLStageEvent *sql_event)
          "create table executor can not run this command: %d", static_cast<int>(stmt->type()));
 
   CreateTableStmt *create_table_stmt = static_cast<CreateTableStmt *>(stmt);
-
+  //获取列的数量和表名
   const int attribute_count = static_cast<int>(create_table_stmt->attr_infos().size());
 
   const char *table_name = create_table_stmt->table_name().c_str();
+  //从session获得db然后在db建表
   RC rc = session->get_current_db()->create_table(table_name, attribute_count, create_table_stmt->attr_infos().data());
 
   return rc;

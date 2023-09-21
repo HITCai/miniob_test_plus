@@ -237,6 +237,7 @@ RC DiskBufferPool::open_file(const char *file_name)
   file_desc_ = fd;
 
   RC rc = RC::SUCCESS;
+  //将header page的frame分配到hdr_frame_
   rc = allocate_frame(BP_HEADER_PAGE, &hdr_frame_);
   if (rc != RC::SUCCESS) {
     LOG_ERROR("failed to allocate frame for header. file name %s", file_name_.c_str());
@@ -632,29 +633,34 @@ BufferPoolManager::~BufferPoolManager()
     delete iter.second;
   }
 }
-
+//根据data文件名创建一个data文件，这个文件是按页来保存的，刚刚创建完的文件只有第一页
 RC BufferPoolManager::create_file(const char *file_name)
 {
+  //先做验证
   int fd = open(file_name, O_RDWR | O_CREAT | O_EXCL, S_IREAD | S_IWRITE);
   if (fd < 0) {
     LOG_ERROR("Failed to create %s, due to %s.", file_name, strerror(errno));
     return RC::SCHEMA_DB_EXIST;
   }
-
+  //关闭文件
   close(fd);
-
+  //此时.data文件已经创建完成了，只是内容为空
   /**
    * Here don't care about the failure
    */
+  //将data文件以读写模式打开
   fd = open(file_name, O_RDWR);
   if (fd < 0) {
     LOG_ERROR("Failed to open for readwrite %s, due to %s.", file_name, strerror(errno));
     return RC::IOERR_ACCESS;
   }
-
+  //声明一个page变量，这应该表示的是一个页头
+  //这个应该是页头
   Page page;
+  //将page变量所占内存区域的前BP_PAGE_SIZE字节清空
+  //BP_PAGE_SIZE为8192，2^13，暂时不懂这个取值的含义
   memset(&page, 0, BP_PAGE_SIZE);
-
+  //声明一个指针，指向page的data
   BPFileHeader *file_header = (BPFileHeader *)page.data;
   file_header->allocated_pages = 1;
   file_header->page_count = 1;
@@ -666,7 +672,7 @@ RC BufferPoolManager::create_file(const char *file_name)
     close(fd);
     return RC::IOERR_SEEK;
   }
-
+  //将page写入文件
   if (writen(fd, (char *)&page, BP_PAGE_SIZE) != 0) {
     LOG_ERROR("Failed to write header to file %s, due to %s.", file_name, strerror(errno));
     close(fd);

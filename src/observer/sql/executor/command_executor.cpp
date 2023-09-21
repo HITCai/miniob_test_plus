@@ -11,7 +11,7 @@ See the Mulan PSL v2 for more details. */
 //
 // Created by Wangyunlai on 2023/4/25.
 //
-
+//这个文件描述的是对DDL语句的处理
 #include "sql/executor/command_executor.h"
 #include "event/sql_event.h"
 #include "sql/stmt/stmt.h"
@@ -25,6 +25,7 @@ See the Mulan PSL v2 for more details. */
 #include "sql/executor/set_variable_executor.h"
 #include "sql/executor/load_data_executor.h"
 #include "common/log/log.h"
+#include "sql/executor/drop_table_executor.h"
 
 RC CommandExecutor::execute(SQLStageEvent *sql_event)
 {
@@ -40,7 +41,10 @@ RC CommandExecutor::execute(SQLStageEvent *sql_event)
       CreateTableExecutor executor;
       return executor.execute(sql_event);
     } break;
-
+    case StmtType::DROP_TABLE: {
+      DropTableExecutor executor;
+      return executor.execute(sql_event);
+    } break;
     case StmtType::DESC_TABLE: {
       DescTableExecutor executor;
       return executor.execute(sql_event);

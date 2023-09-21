@@ -33,7 +33,7 @@ FieldMeta::FieldMeta(const char *name, AttrType attr_type, int attr_offset, int 
   [[maybe_unused]] RC rc = this->init(name, attr_type, attr_offset, attr_len, visible);
   ASSERT(rc == RC::SUCCESS, "failed to init field meta. rc=%s", strrc(rc));
 }
-
+//对列属性进行初始化
 RC FieldMeta::init(const char *name, AttrType attr_type, int attr_offset, int attr_len, bool visible)
 {
   if (common::is_blank(name)) {
